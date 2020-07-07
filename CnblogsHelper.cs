@@ -35,7 +35,7 @@ namespace Generate_Cnblogs_Articles_To_Markdown_Files
                 {
                     var pagesUrl = string.Format("http://www.cnblogs.com/"+ accountname + "/default.html?page={0}", page);
                     //抓取所有的文章内容链接地址，进行循环抓取并存储
-                    var regex = new Regex(@"class=""postTitle"">\s+<a.*?href=""(?<href>.*?)"">",
+                    var regex = new Regex(@"class=""postTitle2\s*vertical-middle"" href=""(?<href>.*?)""",
                         RegexOptions.Singleline | RegexOptions.Multiline);
                     var matches = regex.Matches(NetworkHelper.GetHtmlFromGet(pagesUrl, Encoding.UTF8));
                     foreach (Match match in matches)
@@ -44,10 +44,10 @@ namespace Generate_Cnblogs_Articles_To_Markdown_Files
                         var articleId = articleUrl.Substring(articleUrl.LastIndexOf("/") + 1,8);
                         var regexArticle =
                             new Regex(
-                                @"id=""cb_post_title_url"".*?>(?<title>.*?)</a>.*?<div\s+id=""cnblogs_post_body"".*?>(?<articlecontent>.*?)</div><div\s+id=""MySignature""></div>.*?<span\s+id=""post-date"">(?<date>.*?)</span>",
+                                @"id=""cb_post_title_url"".*?>(?<title>.*?)</a>.*?<div\s+id=""cnblogs_post_body"".*?>(?<articlecontent>.*?)</div>\s*<div\s+id=""MySignature""></div>.*?<span\s+id=""post-date"">(?<date>.*?)</span>",
                                 RegexOptions.Singleline | RegexOptions.Multiline);
                         var content = NetworkHelper.GetHtmlFromGet(articleUrl, Encoding.UTF8);
-                        var regexAppName = new Regex("currentBlogApp='(?<appName>.*?)'", RegexOptions.Singleline | RegexOptions.Multiline);
+                        var regexAppName = new Regex(@"currentBlogApp\s=\s'(?<appName>.*?)'", RegexOptions.Singleline | RegexOptions.Multiline);
                         var matchAppName = regexAppName.Match(content);
                         var appName = string.Empty;
                         if (matchAppName.Success)
@@ -69,7 +69,7 @@ namespace Generate_Cnblogs_Articles_To_Markdown_Files
                             articleContent = articleContent.Replace("<div class=\"cnblogs_Highlighter\">", "```")
                                 .Replace("</pre>", "```"); //博客标记的特殊处理
 
-                            var regexId = new Regex(@"cb_blogId=(?<blogid>\d+),cb_entryId=(?<entryid>\d+)",
+                            var regexId = new Regex(@"cb_blogId\s=\s(?<blogid>\d+),.*?cb_entryId\s=\s(?<entryid>\d+)",
                                 RegexOptions.Singleline | RegexOptions.Multiline);
                             int blogId = 0, postId = 0;
                             var matchId = regexId.Match(content);
@@ -82,8 +82,10 @@ namespace Generate_Cnblogs_Articles_To_Markdown_Files
                             var categoryTags = GetArticleCategory(appName, blogId, postId);
                             var fileName = GetFileName(title, date);
                             var filePath = Application.StartupPath + "\\output\\" + fileName;
-                            var mdContent = string.Format("---\r\ntitle: {0}\r\ndate: {1}\r\n{2}\r\n\r\n---\r\n{3}", title, date,
-                                categoryTags, articleContent);
+                            ///var mdContent = string.Format("<body>---\r\ntitle: {0}\r\ndate: {1}\r\n{2}\r\n\r\n---\r\n{3}</body>", title, date,
+                            //    categoryTags, articleContent);
+                            var mdContent =  articleContent;
+                            mdContent= mdContent.Replace("\"","'");
                             var converter = new Converter();
                             var markdown = converter.Convert(mdContent);
                             int tmpseparateLineLocation = separateLineLocation;
@@ -139,7 +141,7 @@ namespace Generate_Cnblogs_Articles_To_Markdown_Files
         }
         private static string GetFileName(string title, string date)
         {
-            var fileName = title + ".md";
+            var fileName = title + ".html";
             Regex regex = new Regex("[:|\\|/|*|?|>|<||]");
             fileName = regex.Replace(fileName, "-");
             return fileName;
@@ -149,7 +151,7 @@ namespace Generate_Cnblogs_Articles_To_Markdown_Files
         {
             var strReturn = string.Empty;
             var apiReturn =
-                NetworkHelper.GetHtmlFromGet(string.Format("http://www.cnblogs.com/mvc/blog/CategoriesTags.aspx?blogApp={0}&blogId={1}&postId={2}", appName, blogId, postId), Encoding.UTF8);
+                NetworkHelper.GetHtmlFromGet(string.Format("http://www.cnblogs.com/{0}/ajax/CategoriesTags.aspx?blogApp=&blogId={1}&postId={2}", appName, blogId, postId), Encoding.UTF8);
             var content = StringHelper.ConvertUnicode(apiReturn); //注意参数 appName 需要替换，其实blogid不要获取，是固定的。
             var regexCategory = new Regex(@".*?category.*?>(\d+\.)?(?<cata>.*?)</a>",
                 RegexOptions.Singleline | RegexOptions.Multiline);
